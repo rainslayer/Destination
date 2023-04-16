@@ -7,4 +7,3 @@ IRequestHandler handler = new ControllerHandler(typeof(Program).Assembly);
 Server server = new(port, handler);
 
 server.Run();
-d
