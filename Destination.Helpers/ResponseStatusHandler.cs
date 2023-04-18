@@ -4,25 +4,25 @@ namespace Destination.Helpers;
 
 public static class ResponseStatusHandler
 {
-  private static void WriteResponseStatus(HttpStatusCode code, Stream stream)
+  private static async Task WriteResponseStatus(HttpStatusCode code, Stream stream)
   {
-    using StreamWriter writer = new(stream, leaveOpen: true);
-    writer.WriteLine($"HTTP/1.0 {(int)code} {code}");
-    writer.WriteLine();
+    await using StreamWriter writer = new(stream, leaveOpen: true);
+    await writer.WriteLineAsync($"HTTP/1.0 {(int)code} {code}").ConfigureAwait(false);
+    await writer.WriteLineAsync().ConfigureAwait(false);
   }
 
-  public static void WriteBadRequestResponse(Stream stream)
+  public static async Task WriteBadRequestResponse(Stream stream)
   {
-    WriteResponseStatus(HttpStatusCode.BadRequest, stream);
+    await WriteResponseStatus(HttpStatusCode.BadRequest, stream).ConfigureAwait(false);
   }
 
-  public static void WriteNotFoundResponse(Stream stream)
+  public static async Task WriteNotFoundResponse(Stream stream)
   {
-    WriteResponseStatus(HttpStatusCode.NotFound, stream);
+    await WriteResponseStatus(HttpStatusCode.NotFound, stream).ConfigureAwait(false);
   }
 
-  public static void WriteOKResponse(Stream stream)
+  public static async Task WriteOKResponse(Stream stream)
   {
-    WriteResponseStatus(HttpStatusCode.OK, stream);
+    await WriteResponseStatus(HttpStatusCode.OK, stream).ConfigureAwait(false);
   }
 }

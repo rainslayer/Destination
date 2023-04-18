@@ -12,21 +12,18 @@ public class FileHandler : IRequestHandler
     _staticFilesPath = path;
   }
   
-  public void Handle(NetworkStream stream, Request request)
+  public async Task HandleAsync(NetworkStream stream, Request request)
   {
-    using (StreamWriter writer = new(stream))
+    await using StreamWriter writer = new(stream);
+    var filePath = Path.Combine(_staticFilesPath, request.Path[1..]);
+      
+    if (!File.Exists(filePath))
     {
-      
-      var filePath = Path.Combine(_staticFilesPath, request.Path[1..]);
-      
-      if (!File.Exists(filePath))
-      {
-        ResponseStatusHandler.WriteNotFoundResponse(stream);
-        return;
-      }
-      
-      using var fileStream = File.OpenRead(filePath);
-      fileStream.CopyTo(stream);
+      await ResponseStatusHandler.WriteNotFoundResponse(stream).ConfigureAwait(false);
+      return;
     }
+
+    await using var fileStream = File.OpenRead(filePath);
+    await fileStream.CopyToAsync(stream).ConfigureAwait(false);
   }
 }
