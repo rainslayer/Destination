@@ -6,4 +6,4 @@ IRequestHandler handler = new ControllerHandler(typeof(Program).Assembly);
 
 Server server = new(port, handler);
 
-server.Run();
+await server.RunAsync().ConfigureAwait(false);

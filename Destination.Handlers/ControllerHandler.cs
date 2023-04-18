@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net.Sockets;
 using System.Reflection;
 using Destination.Helpers;
@@ -9,11 +10,12 @@ public interface IController {}
 
 public class ControllerHandler : IRequestHandler
 {
-  private readonly Dictionary<string, Func<object>> _controllers;
+  private readonly ConcurrentDictionary<string, Func<object>> _controllers;
 
   public ControllerHandler(Assembly controllersAssembly)
   {
-    _controllers = controllersAssembly.GetTypes()
+    _controllers = new ConcurrentDictionary<string, Func<object>>(controllersAssembly.GetTypes()
+      .AsParallel()
       .Where(x => typeof(IController).IsAssignableFrom(x))
       .SelectMany(Controller => Controller.GetMethods().Select(Method => new
       {
@@ -23,7 +25,7 @@ public class ControllerHandler : IRequestHandler
       .ToDictionary(
         key => GetPath(key.Controller, key.Method),
         value => GetEndpointMethod(value.Controller, value.Method)
-      );
+      ));
   }
 
   private Func<object?> GetEndpointMethod(Type controller, MethodInfo method)
@@ -48,31 +50,31 @@ public class ControllerHandler : IRequestHandler
     return $"/{name}/{method.Name}";
   }
 
-  public void Handle(NetworkStream stream, Request request)
+  public async Task HandleAsync(NetworkStream stream, Request request)
   {
     if (!_controllers.TryGetValue(request.Path, out var func))
     {
-      ResponseStatusHandler.WriteNotFoundResponse(stream);
+      await ResponseStatusHandler.WriteNotFoundResponse(stream).ConfigureAwait(false);
       return;
     } 
     
-    ResponseStatusHandler.WriteOKResponse(stream);
-    WriteControllerResponse(func(), stream);
+    await ResponseStatusHandler.WriteOKResponse(stream).ConfigureAwait(false);
+    await WriteControllerResponseAsync(func(), stream).ConfigureAwait(false);
   }
 
-  private void WriteControllerResponse(object response, Stream stream)
+  private async Task WriteControllerResponseAsync(object response, Stream stream)
   {
     if (response is string str)
     {
-      using StreamWriter writer = new(stream, leaveOpen: true);
-      writer.Write(str);
+      await using StreamWriter writer = new(stream, leaveOpen: true);
+      await writer.WriteAsync(str).ConfigureAwait(false);
     } else if (response is byte[] buffer)
     {
-      stream.Write(buffer, 0, buffer.Length);
+      await stream.WriteAsync(buffer).ConfigureAwait(false);
     }
     else
     {
-      WriteControllerResponse(JsonConvert.SerializeObject(response), stream);
+      await WriteControllerResponseAsync(JsonConvert.SerializeObject(response), stream).ConfigureAwait(false);
     }
   }
 }

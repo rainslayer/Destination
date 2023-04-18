@@ -5,5 +5,5 @@ namespace Destination.Handlers;
 
 public interface IRequestHandler
 {
-  void Handle(NetworkStream stream, Request request);
+  Task HandleAsync(NetworkStream stream, Request request);
 }
